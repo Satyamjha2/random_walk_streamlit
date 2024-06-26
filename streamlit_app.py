@@ -13,22 +13,42 @@ forums](https://discuss.streamlit.io).
 In the meantime, below is an example of what you can do with just a few lines of code:
 """
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+n_steps = st.slider("Number of time steps", 1000, 10000, 1100)
+seed = st.slider("Random Seed", 1, 300, 31)
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
+def plot_polar(n_steps,seed):
+    indices=np.linspace(0,1,n_steps)
+    del_theta=1/10                    ##step size for angle
+    del_r=1                           ##step size for radius
+
+    r=np.zeros(n_steps)
+    theta=np.zeros(n_steps)
+    Z= np.zeros(n_steps,dtype='complex128')
+    Z[0]=0
+    theta=0
+    r=0
+    np.random.seed(seed)
+    # Generate random choices for k_r and k_theta for all steps at once
+    k_r = np.random.choice(a=np.arange(3)-1, p=[0.25, 0.25, 0.5], size=n_steps-1)
+    k_theta = np.random.choice(a=np.arange(3)-1, p=[0.25, 0.25, 0.5], size=n_steps-1)
+    r_values = np.cumsum(np.concatenate(([r], del_r * k_r)))
+    theta_values = np.cumsum(np.concatenate(([theta], del_theta * k_theta)))
+    Z = r_values * np.exp(1j * theta_values)
+    # If the first value of Z should be 0, adjust as needed
+    Z[0] = 1 * r * np.exp(1j * theta)
+
+    df = pd.DataFrame({
+        "x": Z.real,
+        "y": Z.imag,
+        "idx": indices,
+        "rand": np.random.randn(n_steps),
+    })
+
+    return df
+
+df=plot_polar(n_steps,seed)
 
 st.altair_chart(alt.Chart(df, height=700, width=700)
     .mark_point(filled=True)
